@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  figma-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: figma-context-mcp
+    ports:
+      - "3333:3333"
+    environment:
+      # Required: Set your Figma API key or OAuth token
+      - FIGMA_API_KEY=${FIGMA_API_KEY:-}
+      - FIGMA_OAUTH_TOKEN=${FIGMA_OAUTH_TOKEN:-}
+      
+      # Optional configuration
+      - PORT=${PORT:-3333}
+      - OUTPUT_FORMAT=${OUTPUT_FORMAT:-yaml}
+      - SKIP_IMAGE_DOWNLOADS=${SKIP_IMAGE_DOWNLOADS:-false}
+      - NODE_ENV=${NODE_ENV:-production}
+    
+    # Load environment variables from .env file if it exists
+    env_file:
+      - .env
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3333', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: STDIO mode service for MCP protocol usage
+  figma-mcp-stdio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: figma-context-mcp-stdio
+    environment:
+      # Required: Set your Figma API key or OAuth token
+      - FIGMA_API_KEY=${FIGMA_API_KEY:-}
+      - FIGMA_OAUTH_TOKEN=${FIGMA_OAUTH_TOKEN:-}
+      
+      # STDIO mode configuration
+      - NODE_ENV=cli
+      - OUTPUT_FORMAT=${OUTPUT_FORMAT:-yaml}
+      - SKIP_IMAGE_DOWNLOADS=${SKIP_IMAGE_DOWNLOADS:-false}
+    
+    # Load environment variables from .env file if it exists
+    env_file:
+      - .env
+    
+    # This service is designed for STDIO interaction
+    # Use: docker-compose run --rm figma-mcp-stdio
+    stdin_open: true
+    tty: true
+    profiles:
+      - stdio
